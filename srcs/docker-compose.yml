@@ -1,0 +1,84 @@
+services:
+  mariadb:
+    build: 
+      context: ./requirements/Mariadb
+      dockerfile: Dockerfile
+    container_name: mariadb
+    env_file: 
+      - .env
+    restart: unless-stopped      
+    secrets:
+      - db_root_password
+      - db_password
+    networks:
+      - inception_network
+    volumes:
+      - mariadb:/var/lib/mysql
+  nginx:
+    build: ./requirements/nginx
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    networks:
+      - inception_network
+    env_file: .env
+    volumes:
+      - wordpress:/var/www/html
+    depends_on:
+      - wordpress
+  wordpress:
+    build: ./requirements/WordPress
+    container_name: wordpress
+    restart: unless-stopped
+    env_file: .env
+    secrets:
+      - db_password
+      - credentials
+    networks:
+      - inception_network
+    volumes:
+      - wordpress:/var/www/html
+    depends_on:
+      - mariadb
+    expose:
+      - "9000"
+  adminer:
+    build: ./requirements/bonus/adminer
+    container_name: adminer
+    restart: unless-stopped
+    networks:
+      - inception_network
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mariadb
+
+volumes:
+  mariadb:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/data/mariadb
+
+  wordpress:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/${USER}/data/wordpress
+
+networks:
+  inception_network:
+    driver: bridge
+
+secrets:
+  db_root_password:
+    file: ../secrets/db_root_password.txt
+  db_password:
+    file: ../secrets/db_password.txt
+  credentials:
+    file: ../secrets/credentials.txt
+
+    
